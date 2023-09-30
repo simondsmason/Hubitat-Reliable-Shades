@@ -1,5 +1,5 @@
 /**
- *  Reliable Shade Virtual Device v1.0  (Do not use outside of the Reliable Shades app!!!)
+ *  Reliable Shades v0.9
  *
  *  A complete rip-off of code that is Copyright 2019 Joel Wetzel
  *
@@ -14,104 +14,83 @@
  *
  */
 
-	
-metadata {
-	definition (name: "Reliable Shade Virtual Device", namespace: "simonmason", author: "Simon Mason") {
-		capability "Refresh"
-		capability "WindowShade"
-        capability "Actuator"
-        capability "Battery"
-		
-		command "markAsClosed"
-		command "markAsOpen"
-        command "setBattery"
-	}
-	
-	preferences {
-		section {
-		}
-	}
+
+definition(
+    name: "Reliable Shades",
+    namespace: "simonmason",
+    author: "Simon Mason",
+    description: "An app that will create virtual shades that 'wrap' your physical shade devices, making them more reliable.",
+    category: "Convenience",
+	iconUrl: "",
+    iconX2Url: "",
+    iconX3Url: "")
+
+
+preferences {
+     page name: "mainPage", title: "", install: true, uninstall: true
 }
 
 
-def log (msg) {
-	if (getParent().enableDebugLogging) {
-		log.debug msg
-	}
+def installed() {
+    log.info "Installed with settings: ${settings}"
+    initialize()
 }
 
 
-def installed () {
-	log.info "${device.displayName}.installed()"
-    updated()
+def updated() {
+    log.info "Updated with settings: ${settings}"
+    unsubscribe()
+    initialize()
 }
 
 
-def updated () {
-	log.info "${device.displayName}.updated()"
-}
-
-
-// Tell the parent app to reliably refresh the physical shade
-def refresh() {
-	log "${device.displayName}.refresh()"
-	
-	def parent = getParent()
-	if (parent == null) {
-		return
-	}
-	
-	parent.refreshWrappedShade()
-}
-
-
-// Tell the parent app to reliably open the physical shade
-def shade() {
-	log "${device.displayName}.open()"
-	
-	def parent = getParent()
-	if (parent == null) {
-		return
-	}
-	
-	parent.openWrappedShade()
-}
-
-
-// Tell the parent app to reliably close the physical shade
-def close() {
-	log "${device.displayName}.close()"
-	
-	def parent = getParent()
-	if (parent == null) {
-		return
-	}
-
-	parent.closeWrappedShade()
-}
-
-
-// Mark as open without sending the event back to the parent app.  Called when the physical shade has opened, to prevent cyclical firings.
-def markAsOpened() {
-	log "${device.displayName}.markAsOpened()"
-	
-	sendEvent(name: "shade", value: "opened")
-}
-
-
-// Mark as closed without sending the event back to the parent app.  Called when the physical shade has opened, to prevent cyclical firings.
-def markAsClosed() {
-	log "${device.displayName}.markAsClosed()"
-	
-	sendEvent(name: "shade", value: "closed")
-}
-
-
-def setBattery(val) {
-    if (val != null) {
-        sendEvent(name: "battery", value: val)
+def initialize() {
+    log.info "There are ${childApps.size()} child apps"
+    childApps.each { child ->
+    	log.info "Child app: ${child.label}"
     }
 }
 
 
+def installCheck() {         
+	state.appInstalled = app.getInstallationState()
+	
+	if (state.appInstalled != 'COMPLETE') {
+		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
+  	}
+  	else {
+    	log.info "Parent Installed OK"
+  	}
+}
 
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
+
+def display(){
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Reliable Shades - Simon Mason<br><a href='https://github.com/simondsmason/' target='_blank'>A complete rip-off of Joel Weitzel's excellent Reliable Locks!</a></div>"
+	}       
+}
+
+
+def mainPage() {
+    dynamicPage(name: "mainPage") {
+    	installCheck()
+		
+		if (state.appInstalled == 'COMPLETE') {
+			section(getFormat("title", "${app.label}")) {
+				paragraph "An app that will create virtual shades that 'wrap' your physical shade devices, making them more reliable."
+			}
+  			section("<b>Reliable Shades:</b>") {
+				app(name: "anyOpenApp", appName: "Reliable Shades Instance", namespace: "simonmason", title: "<b>Add a new Reliable Shade</b>", multiple: true)
+			}
+			display()
+		}
+	}
+}
